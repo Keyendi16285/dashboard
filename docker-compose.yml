@@ -1,0 +1,27 @@
+services:
+  papers-app:
+    build: .
+    container_name: dashboard_massfoia
+    ports:
+      - "8004:8000"  # Maps Port 8004 on Hetzner to 8000 inside the container
+    volumes:
+      # - ./papers.db:/app/dash.db  # Persists your database file
+      - ./.env:/app/.env      
+      - .:/app
+    working_dir: /app
+    environment:
+      - DATABASE_URL=postgresql://postgres:casemanagement@postgres_db:5432/case_management
+      # - CASETRACKER_API_URL=https://casetracker.massfoia.com/api
+      - SECRET_KEY=6_9rU6NZksH1KZgd3fQY8fCCR8XS90c0rFWnBFhm3EA
+    external_links:
+      - postgres_db:db
+      # Passes your config variables
+    restart: always
+    networks:
+      - shared_network
+
+networks:
+  shared_network:
+    external: true
+    # name: casetracker_default # Update this to match your actual network name
+    name: case-entry-form_default # Update this to match your actual network name

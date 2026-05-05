@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Defendant Dashboard | MassFOIA</title>
+    <!-- Tailwind for styling and FontAwesome for icons -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body class="bg-slate-50 font-sans antialiased text-slate-900">
+
+    <!-- Navigation Header -->
+    <nav class="bg-slate-900 text-white p-4 shadow-md">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-black tracking-tighter uppercase">
+                Dashboard<span class="text-blue-500">.</span>Defendants
+            </h1>
+            <div id="user-info" class="text-xs font-medium text-slate-400 uppercase tracking-widest">
+                <!-- Username will be injected here -->
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto py-10 px-4">
+        <header class="mb-8">
+            <h2 class="text-3xl font-bold text-slate-800">Master Defendants</h2>
+            <p class="text-slate-500 mt-1">Cross-reference data between CaseTracker and Returnalyzer.</p>
+        </header>
+
+        <!-- Table Container -->
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+            <table class="w-full text-left border-collapse">
+                <thead class="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                        <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Defendant
+                        </th>
+                        <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Case Info
+                        </th>
+                        <th
+                            class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">
+                            CaseTracker</th>
+                        <th
+                            class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">
+                            Returnalyzer</th>
+                    </tr>
+                </thead>
+                <tbody id="defendants-table-body" class="divide-y divide-slate-100">
+                    <!-- Loading State -->
+                    <tr>
+                        <td colspan="3" class="p-20 text-center">
+                            <i class="fa-solid fa-circle-notch animate-spin text-blue-500 text-2xl"></i>
+                            <p class="text-slate-400 text-sm mt-4 font-medium uppercase tracking-tighter">Syncing
+                                records...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="max-w-7xl mx-auto py-8 px-4 text-center">
+        <p class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">&copy; 2026 MassFOIA Solutions</p>
+    </footer>
+
+    <!-- Next: Logic File -->
+    <script src="/static/dashboard.js"></script>
+</body>
+
+</html>

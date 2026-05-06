@@ -55,7 +55,9 @@ async function loadDashboard() {
         tableBody.innerHTML = data.map(d => {
             // FIX: Append the &token= to the links so the other apps recognize the login
             const ctLink = `https://casetracker.massfoia.com/defendants?search=${encodeURIComponent(d.name)}&token=${token}`;
+            // const ctLink = `http://localhost:8001/defendants?search=${encodeURIComponent(d.name)}&token=${token}`;
             const raLink = `https://returnalyzer.massfoia.com/defendants?search=${encodeURIComponent(d.name)}&token=${token}`;
+            // const raLink = `http://localhost:8002/defendants?search=${encodeURIComponent(d.name)}&token=${token}`;
 
             return `
                 <tr class="hover:bg-slate-50 transition-colors border-b border-slate-100">

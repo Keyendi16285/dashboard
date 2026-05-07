@@ -58,7 +58,7 @@ async function loadDashboard() {
             // const ctLink = `http://localhost:8001/defendants?search=${encodeURIComponent(d.name)}&token=${token}`;
             const raLink = `https://returnalyzer.massfoia.com/defendants?search=${encodeURIComponent(d.name)}&token=${token}`;
             // const raLink = `http://localhost:8002/defendants?search=${encodeURIComponent(d.name)}&token=${token}`;
-            const papersLink = `https://papers.massfoia.com/?search=${encodeURIComponent(d.name)}`;
+            const papersLink = `https://papers.massfoia.com/?search=${encodeURIComponent(d.name)}&token=${token}`;
             // &token=${token}
 
             return `

@@ -58,6 +58,7 @@ async function loadDashboard() {
             // const ctLink = `http://localhost:8001/defendants?search=${encodeURIComponent(d.name)}&token=${token}`;
             const raLink = `https://returnalyzer.massfoia.com/defendants?search=${encodeURIComponent(d.name)}&token=${token}`;
             // const raLink = `http://localhost:8002/defendants?search=${encodeURIComponent(d.name)}&token=${token}`;
+            const papersLink = `https://papers.massfoia.com/defendants?search=${encodeURIComponent(d.name)}&token=${token}`;
 
             return `
                 <tr class="hover:bg-slate-50 transition-colors border-b border-slate-100">
@@ -73,6 +74,12 @@ async function loadDashboard() {
                         <a href="${ctLink}" 
                            class="inline-flex items-center px-3 py-1 rounded bg-blue-50 text-blue-600 text-xs font-bold hover:bg-blue-600 hover:text-white transition-all">
                             Open Case
+                        </a>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <a href="${papersLink}" 
+                           class="inline-flex items-center px-3 py-1 rounded bg-green-50 text-green-600 text-xs font-bold hover:bg-green-600 hover:text-white transition-all">
+                            View Papers
                         </a>
                     </td>
                     <td class="px-6 py-4 text-center">

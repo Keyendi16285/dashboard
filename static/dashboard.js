@@ -73,20 +73,20 @@ async function loadDashboard() {
                     </td>
                     <td class="px-6 py-4 text-center">
                         <a href="${ctLink}" 
-                           class="inline-flex items-center px-3 py-1 rounded bg-blue-50 text-blue-600 text-xs font-bold hover:bg-blue-600 hover:text-white transition-all">
-                            Open Case
+                           title="Open CaseTracker" class="inline-block hover:opacity-75 transition-opacity">
+                           <img src="/static/casetracker-icon.png" alt="CaseTracker" class="h-6 w-6 mx-auto">
                         </a>
                     </td>
                     <td class="px-6 py-4 text-center">
                         <a href="${papersLink}" 
-                           class="inline-flex items-center px-3 py-1 rounded bg-green-50 text-green-600 text-xs font-bold hover:bg-green-600 hover:text-white transition-all">
-                            View Papers
+                           title="View Papers" class="inline-block hover:opacity-75 transition-opacity">
+                           <img src="/static/papers-icon.png" alt="Papers" class="h-6 w-6 mx-auto">
                         </a>
                     </td>
                     <td class="px-6 py-4 text-center">
                         <a href="${raLink}" 
-                           class="inline-flex items-center px-3 py-1 rounded bg-purple-50 text-purple-600 text-xs font-bold hover:bg-purple-600 hover:text-white transition-all">
-                            Analyze
+                           title="Analyze" class="inline-block hover:opacity-75 transition-opacity">
+                           <img src="/static/returnalyzer-icon.png" alt="Returnalyzer" class="h-6 w-6 mx-auto">
                         </a>
                     </td>
                 </tr>

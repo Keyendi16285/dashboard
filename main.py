@@ -35,6 +35,10 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 async def read_index():
     return FileResponse("static/index.html")
 
+@app.get("/defendants")
+async def read_defendants_dashboard():
+    return FileResponse("static/defendants.html")
+
 # --- API ROUTES ---
 
 @app.get("/api/defendants", response_model=List[dict])

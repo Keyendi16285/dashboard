@@ -39,6 +39,10 @@ async def read_index():
 async def read_defendants_dashboard():
     return FileResponse("static/defendants.html")
 
+@app.get('/favicon.ico', include_in_schema=False)
+async def favicon():
+    return FileResponse("static/favicon.ico")
+
 # --- API ROUTES ---
 
 @app.get("/api/defendants", response_model=List[dict])

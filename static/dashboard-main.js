@@ -91,8 +91,8 @@ if (tokenFromUrl) {
     const token = sessionStorage.getItem("access_token") || localStorage.getItem("access_token");
 
     if (!token) {
-        // Fallback context mirroring your standard environment protocol
-        const currentUrl = window.location.origin;
+        // FIX: Redirect to the Centralized Case Tracker login domain, NOT local '/login.html'
+        const currentUrl = window.location.href; // Captures dashboard.massfoia.com with paths if any
         const loginUrl = `https://casetracker.massfoia.com/login?redirect_url=${encodeURIComponent(currentUrl)}`;
         
         window.location.replace(loginUrl);
@@ -103,7 +103,7 @@ if (tokenFromUrl) {
 /**
  * Safely routes the user to an independent application suite domain
  * while appending the current session token to preserve their login context.
- * * @param {string} baseUrl - Target destination URL (e.g. https://papers.massfoia.com/)
+ * @param {string} baseUrl - Target destination URL (e.g. https://papers.massfoia.com/)
  */
 window.navigateWithToken = function(baseUrl) {
     const token = sessionStorage.getItem("access_token") || localStorage.getItem("access_token");
@@ -125,9 +125,9 @@ window.logout = function() {
     sessionStorage.clear();
     localStorage.clear();
     
+    // FIX: Match logout redirect destination consistency
     const currentUrl = window.location.origin;
     window.location.replace(`https://casetracker.massfoia.com/login?redirect_url=${encodeURIComponent(currentUrl)}`);
 };
 
-// Log successful asset boot completion
 console.log("MASSFOIA Hub Security Engine deployed successfully.");

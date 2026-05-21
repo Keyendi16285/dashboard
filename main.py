@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -41,7 +41,19 @@ async def read_defendants_dashboard():
 
 @app.get('/favicon.ico', include_in_schema=False)
 async def favicon():
-    return FileResponse("static/favicon.ico")
+    # Path where it expects the icon
+    primary_favicon = "static/favicon.ico"
+    fallback_favicon = "static/favicon.png"
+    
+    # Safely check if the .ico file exists
+    if os.path.exists(primary_favicon):
+        return FileResponse(primary_favicon)
+    # If not, check if your .png version exists
+    elif os.path.exists(fallback_favicon):
+        return FileResponse(fallback_favicon)
+    
+    # If nothing exists, return an empty 204 response so it doesn't crash
+    return Response(status_code=204)
 
 # --- API ROUTES ---
 

@@ -1,6 +1,6 @@
-from fastapi import FastAPI, Depends, HTTPException, Response
+from fastapi import FastAPI, Depends, HTTPException, Response, status, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select
 from typing import List
@@ -100,3 +100,78 @@ def get_dashboard_defendants(
         # Log the error to the console for debugging
         print(f"Database Error: {e}")
         raise HTTPException(status_code=500, detail="Database connection failed")
+    
+@app.get("/defendants/{defendant_id}", response_class=HTMLResponse)
+async def read_defendant_profile(request: Request, defendant_id: int):
+    """
+    Serves the static profile HTML page structure.
+    Client-side JavaScript will handle fetching data using the ID in the URL.
+    """
+    file_path = os.path.join("static", "defendant_profile.html")
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Profile template not found")
+        
+    with open(file_path, "r") as f:
+        return HTMLResponse(content=f.read())
+    
+@app.get("/api/defendants/{defendant_id}")
+async def get_defendant_data_api(
+    defendant_id: int, 
+    session: Session = Depends(get_session)
+    # Add token verification dependencies here if you validate on the backend
+):
+    """
+    API endpoint that queries the PostgreSQL DB and returns the single defendant object.
+    """
+    defendant = session.exec(select(Defendant).filter(Defendant.id == defendant_id)).first()
+    
+    if not defendant:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail=f"Defendant with ID {defendant_id} not found."
+        )
+        
+    # Return the fields your UI demands
+    return {
+        "id": defendant.id,
+        "name": defendant.name,
+        "case_name": getattr(defendant, "case_name", "N/A"),       # Fallback safety if column name differs
+        "case_number": getattr(defendant, "case_number", "2025CH6") # Matches image screenshot pattern
+    }
+    
+@app.get("/cases", response_class=HTMLResponse)
+async def serve_cases_directory(request: Request):
+    """Serves the central table directory view tracking master legal contexts."""
+    with open(os.path.join("static", "cases.html"), "r") as f:
+        return HTMLResponse(content=f.read())
+
+@app.get("/cases/{case_id}", response_class=HTMLResponse)
+async def serve_single_case_profile(request: Request, case_id: int):
+    """Serves the template skeleton profile interface structure of a case."""
+    with open(os.path.join("static", "case_profile.html"), "r") as f:
+        return HTMLResponse(content=f.read())
+    
+@app.get("/api/cases")
+async def get_all_cases_api(session: Session = Depends(get_session)):
+    """Returns list of all active database rows for cases registry grid rendering."""
+    cases = session.exec(select(CaseEntry)).all()
+    return [
+        {
+            "id": c.id,
+            "case_name": c.case_name,
+            "case_number": c.case_number,
+            "defendant_name": getattr(c, "defendant_name", "N/A") # Dynamic safety validation fallback
+        } for c in cases
+    ]
+
+@app.get("/api/cases/{case_id}")
+async def get_single_case_data_api(case_id: int, session: Session = Depends(get_session)):
+    """Returns explicit target parameter model keys for parsing in profile landing sheets."""
+    case_record = session.exec(select(CaseEntry).filter(CaseEntry.id == case_id)).first()
+    if not case_record:
+        raise HTTPException(status_code=404, detail="Requested litigation context node missing.")
+    return {
+        "id": case_record.id,
+        "case_name": case_record.case_name,
+        "case_number": case_record.case_number
+    }

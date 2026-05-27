@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+    <title>Cases Registry - Hub Launchpad</title>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-gray-100 p-6 md:p-12 text-gray-900">
+    <div class="max-w-7xl mx-auto">
+        <div class="flex justify-between items-center mb-8 bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <div>
+                <h1 class="text-2xl font-black text-gray-900 tracking-tight">Litigation Cases Registry</h1>
+                <p class="text-sm text-gray-500">Centralized tracking database for legal case profiles.</p>
+            </div>
+            <a href="https://dashboard.massfoia.com" class="px-4 py-2 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-all">
+                ← Main Hub Launchpad
+            </a>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full table-fixed border-collapse min-w-[800px]">
+                    <colgroup>
+                        <col class="w-[35%]"> <col class="w-[25%]"> <col class="w-[25%]"> <col class="w-[15%]"> </colgroup>
+                    <thead class="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                            <th class="p-4 text-left text-xs font-bold uppercase tracking-wider text-gray-700">Case Info</th>
+                            <th class="p-4 text-left text-xs font-bold uppercase tracking-wider text-gray-700">Case Number</th>
+                            <th class="p-4 text-left text-xs font-bold uppercase tracking-wider text-gray-700">Primary Defendant</th>
+                            <th class="p-4 text-right text-xs font-bold uppercase tracking-wider text-gray-700">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cases-table-body" class="divide-y divide-gray-200 bg-white">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script src="/static/cases-dashboard.js"></script>
+</body>
+</html>

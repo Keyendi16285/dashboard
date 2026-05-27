@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Defendant Profile Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between">
+
+    <header class="border-b border-slate-800 bg-slate-950/50 p-4 sticky top-0 backdrop-blur-md">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <a href="/" class="text-sm font-semibold text-slate-400 hover:text-slate-200">← Back to Main Hub</a>
+            <span id="auth-status"
+                class="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded">Authenticated</span>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-12 flex-1 w-full">
+        <div class="mb-8 border-b border-slate-800 pb-6">
+            <h1 id="defendant-name" class="text-3xl font-bold tracking-tight text-white mb-2">Loading Defendant...</h1>
+            <p id="defendant-meta" class="text-sm text-slate-400">ID: -- | Case Name: -- | Case Number: --</p>
+        </div>
+
+        <h2 class="text-lg font-semibold text-slate-300 mb-4">Connected Application Ecosystem</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <a id="link-casetracker" href="#"
+                class="block p-5 rounded-xl border border-slate-800 bg-slate-950/40 hover:border-blue-500/50 transition-all group">
+                <div class="flex items-center space-x-3 mb-2">
+                    <div
+                        class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400 group-hover:bg-blue-500 group-hover:text-white transition-all duration-300">
+                        <img src="/static/casetracker-icon.png" alt="Case Tracker" class="h-6 w-6 object-contain" />
+                    </div>
+                    <h3 class="font-bold text-white">Open Case Tracker</h3>
+                </div>
+                <p class="text-xs text-slate-400">Review core litigation, updates, and documents for this entity.</p>
+            </a>
+
+            <a id="link-papers" href="#"
+                class="block p-5 rounded-xl border border-slate-800 bg-slate-950/40 hover:border-emerald-500/50 transition-all group">
+                <div class="flex items-center space-x-3 mb-2">
+                    <div
+                        class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white transition-all duration-300">
+                        <img src="/static/papers-icon.png" alt="Papers" class="h-6 w-6 object-contain" />
+                    </div>
+                    <h3 class="font-bold text-white">View Papers</h3>
+                </div>
+                <p class="text-xs text-slate-400">Access public records processing logs and FOIA request queues.</p>
+            </a>
+
+            <a id="link-returnalyzer" href="#"
+                class="block p-5 rounded-xl border border-slate-800 bg-slate-950/40 hover:border-purple-500/50 transition-all group">
+                <div class="flex items-center space-x-3 mb-2">
+                    <div
+                        class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-purple-500/10 text-purple-400 group-hover:bg-purple-500 group-hover:text-white transition-all duration-300">
+                        <img src="/static/returnalyzer-icon.png" alt="Returnalyzer" class="h-6 w-6 object-contain" />
+                    </div>
+                    <h3 class="font-bold text-white">Open Returnalyzer</h3>
+                </div>
+                <p class="text-xs text-slate-400">Run statistical assessments and reporting routines against entries.
+                </p>
+            </a>
+        </div>
+    </main>
+
+    <script src="/static/defendant-profile.js"></script>
+</body>
+
+</html>

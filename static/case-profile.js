@@ -2,11 +2,9 @@
  * Case Single Profile Landing Page Routing Engine
  */
 (async function initCaseHub() {
-    const token = sessionStorage.getItem("access_token");
-    if (!token) {
-        window.location.replace("https://casetracker.massfoia.com/login");
-        return;
-    }
+    // The login gate lives in auth.js; here we just read the active token for
+    // the authenticated fetch and the cross-origin links below.
+    const token = getActiveToken();
 
     // Extract dynamic Case numeric database ID sequence parameter from URL structure boundary
     const pathSegments = window.location.pathname.split('/').filter(seg => seg !== "");
@@ -22,13 +20,7 @@
 
     try {
         // Query specific case payload data parameters out of backend endpoints configuration
-        const response = await fetch(`/api/cases/${caseId}`, {
-            method: "GET",
-            headers: { 
-                "Authorization": `Bearer ${token}`,
-                "Content-Type": "application/json"
-            }
-        });
+        const response = await authFetch(`/api/cases/${caseId}`);
 
         if (!response.ok) throw new Error(`Query returned bad status tracking response: ${response.status}`);
         const caseRecord = await response.json();

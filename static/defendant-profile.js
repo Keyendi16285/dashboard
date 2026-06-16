@@ -3,14 +3,9 @@
  * Handles dynamic data fetching and parameter injection for external app routing.
  */
 (async function initProfileHub() {
-    // 1. Authentication Layer Guard
-    const token = sessionStorage.getItem("access_token");
-    
-    if (!token) {
-        console.warn("No active session token found. Redirecting to central auth...");
-        window.location.replace("https://casetracker.massfoia.com/login");
-        return;
-    }
+    // 1. Authentication Layer Guard — the login gate lives in auth.js; here we
+    //    just read the active token for the cross-origin links built below.
+    const token = getActiveToken();
 
     // 2. Dynamic URL Segment Extraction
     // Path format expected: /defendants/830 -> splitting yields ["", "defendants", "830"]
@@ -27,19 +22,10 @@
 
     try {
         // 3. Fetch data payload from backend API
-        const response = await fetch(`/api/defendants/${defendantId}`, {
-            method: "GET",
-            headers: { 
-                "Authorization": `Bearer ${token}`,
-                "Content-Type": "application/json"
-            }
-        });
+        // authFetch (from auth.js) attaches the bearer token and handles 401s.
+        const response = await authFetch(`/api/defendants/${defendantId}`);
 
         if (!response.ok) {
-            if (response.status === 401 || response.status === 403) {
-                window.location.replace("https://casetracker.massfoia.com/login");
-                return;
-            }
             throw new Error(`Server returned status code: ${response.status}`);
         }
 

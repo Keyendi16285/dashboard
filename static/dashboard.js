@@ -1,46 +1,15 @@
 /**
  * Dashboard.massfoia - Database-Driven Logic
+ *
+ * Authentication (SSO handshake, the login gate and authFetch) lives in the
+ * shared /static/auth.js, which loads before this file.
  */
-
-// 1. CAPTURE TOKEN FROM URL (SSO Handshake)
-const urlParams = new URLSearchParams(window.location.search);
-const tokenFromUrl = urlParams.get('token');
-
-if (tokenFromUrl) {
-    sessionStorage.setItem("access_token", tokenFromUrl);
-    const cleanUrl = window.location.origin + window.location.pathname;
-    window.history.replaceState({}, document.title, cleanUrl);
-}
-
-// 2. TIGHTENED AUTHENTICATION CHECK
-(function verifyAccess() {
-    const token = sessionStorage.getItem("access_token") || localStorage.getItem("access_token");
-
-    if (!token) {
-        const currentUrl = window.location.origin;
-        const loginUrl = `https://casetracker.massfoia.com/login?redirect_url=${encodeURIComponent(currentUrl)}`;
-        window.location.replace(loginUrl);
-        throw new Error("Unauthorized: Redirecting to login...");
-    }
-})();
-
-// Helper for Authenticated Requests
-async function authFetch(url, options = {}) {
-    const token = sessionStorage.getItem("access_token");
-    const headers = {
-        ...options.headers,
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-    };
-    return fetch(url, { ...options, headers });
-}
 
 async function loadDashboard() {
     const tableBody = document.getElementById('defendants-table-body');
-    const token = sessionStorage.getItem("access_token"); // Get current token
 
     try {
-        // FIX: Use authFetch instead of regular fetch to send the token to your API
+        // authFetch (from auth.js) attaches the bearer token and handles 401s.
         const response = await authFetch('/api/defendants');
 
         if (!response.ok) throw new Error(`Server responded with ${response.status}`);
@@ -85,11 +54,5 @@ async function loadDashboard() {
         tableBody.innerHTML = `<tr><td colspan="4" class="p-12 text-center text-red-500 font-medium text-sm">Error loading data.</td></tr>`;
     }
 }
-
-window.handleLogout = function () {
-    sessionStorage.clear();
-    localStorage.clear();
-    window.location.replace(`https://casetracker.massfoia.com/login`);
-};
 
 document.addEventListener('DOMContentLoaded', loadDashboard);

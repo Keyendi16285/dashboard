@@ -2,6 +2,8 @@ from fastapi import FastAPI, Depends, HTTPException, Response, status, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
 from sqlmodel import Session, select
 from typing import List
 import os
@@ -12,6 +14,28 @@ from database import get_session, create_db_and_tables
 from models import Defendant, CaseEntry
 
 load_dotenv()
+
+# --- AUTHENTICATION (Shared Case Tracker SSO) ---
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")  # Points to Case Tracker login
+
+
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    """Validates the Case Tracker-issued JWT attached as a Bearer token."""
+    credentials_exception = HTTPException(
+        status_code=401,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+        return username
+    except JWTError:
+        raise credentials_exception
 
 app = FastAPI(title="MassFOIA Defendant Dashboard")
 
@@ -59,8 +83,9 @@ async def favicon():
 
 @app.get("/api/defendants", response_model=List[dict])
 def get_dashboard_defendants(
-    case_class: str = None, 
-    session: Session = Depends(get_session)
+    case_class: str = None,
+    session: Session = Depends(get_session),
+    user = Depends(get_current_user)
 ):
     """
     Simplified database fetch focusing only on Defendants and CaseEntries.
@@ -116,9 +141,9 @@ async def read_defendant_profile(request: Request, defendant_id: int):
     
 @app.get("/api/defendants/{defendant_id}")
 async def get_defendant_data_api(
-    defendant_id: int, 
-    session: Session = Depends(get_session)
-    # Add token verification dependencies here if you validate on the backend
+    defendant_id: int,
+    session: Session = Depends(get_session),
+    user = Depends(get_current_user)
 ):
     """
     API endpoint that queries the PostgreSQL DB and returns the single defendant object.
@@ -152,7 +177,7 @@ async def serve_single_case_profile(request: Request, case_id: int):
         return HTMLResponse(content=f.read())
     
 @app.get("/api/cases")
-async def get_all_cases_api(session: Session = Depends(get_session)):
+async def get_all_cases_api(session: Session = Depends(get_session), user = Depends(get_current_user)):
     """Returns list of all active database rows for cases registry grid rendering."""
     cases = session.exec(select(CaseEntry)).all()
     return [
@@ -165,7 +190,7 @@ async def get_all_cases_api(session: Session = Depends(get_session)):
     ]
 
 @app.get("/api/cases/{case_id}")
-async def get_single_case_data_api(case_id: int, session: Session = Depends(get_session)):
+async def get_single_case_data_api(case_id: int, session: Session = Depends(get_session), user = Depends(get_current_user)):
     """Returns explicit target parameter model keys for parsing in profile landing sheets."""
     case_record = session.exec(select(CaseEntry).filter(CaseEntry.id == case_id)).first()
     if not case_record:

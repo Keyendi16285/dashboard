@@ -3,19 +3,10 @@
  */
 async function loadCasesDashboard() {
     const tableBody = document.getElementById('cases-table-body');
-    const token = sessionStorage.getItem("access_token");
-
-    if (!token) {
-        window.location.replace("https://casetracker.massfoia.com/login");
-        return;
-    }
 
     try {
-        // Query the data stream from your live FastAPI backend API route
-        const response = await fetch('/api/cases', {
-            method: "GET",
-            headers: { "Authorization": `Bearer ${token}` }
-        });
+        // authFetch (from auth.js) attaches the bearer token and handles 401s.
+        const response = await authFetch('/api/cases');
 
         if (!response.ok) throw new Error(`Server status returned: ${response.status}`);
         const data = await response.json();

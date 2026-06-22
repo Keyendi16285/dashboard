@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Pull from .env if available, otherwise use the Returnalyzer default
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:casemanagement@db:5432/case_management")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:%21casemanagement%212%23@db:5432/case_management")
 
 engine = create_engine(DATABASE_URL, echo=True)
 

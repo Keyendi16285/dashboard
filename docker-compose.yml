@@ -10,7 +10,7 @@ services:
       - .:/app
     working_dir: /app
     environment:
-      - DATABASE_URL=postgresql://postgres:casemanagement@postgres_db:5432/case_management
+      - DATABASE_URL=postgresql://postgres:%21casemanagement%212%23@postgres_db:5432/case_management
       # - CASETRACKER_API_URL=https://casetracker.massfoia.com/api
       - SECRET_KEY=6_9rU6NZksH1KZgd3fQY8fCCR8XS90c0rFWnBFhm3EA
     external_links:

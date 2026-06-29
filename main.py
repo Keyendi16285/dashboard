@@ -4,7 +4,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from sqlmodel import Session, select
+from sqlmodel import Session, select, func
 from typing import List
 import os
 from dotenv import load_dotenv
@@ -100,7 +100,7 @@ def get_dashboard_defendants(
         # 2. Apply Filtering Logic
         # Mirroring Returnalyzer logic to exclude Test cases by default[cite: 3]
         if not case_class or case_class == "ALL":
-            statement = statement.where(CaseEntry.case_class != "TST")
+            statement = statement.where(func.upper(func.trim(func.coalesce(CaseEntry.case_class, ""))) != "TST")
         else:
             statement = statement.where(CaseEntry.case_class == case_class)
         
@@ -177,9 +177,14 @@ async def serve_single_case_profile(request: Request, case_id: int):
         return HTMLResponse(content=f.read())
     
 @app.get("/api/cases")
-async def get_all_cases_api(session: Session = Depends(get_session), user = Depends(get_current_user)):
-    """Returns list of all active database rows for cases registry grid rendering."""
-    cases = session.exec(select(CaseEntry)).all()
+async def get_all_cases_api(case_class: str = None, session: Session = Depends(get_session), user = Depends(get_current_user)):
+    """Returns active case rows for the registry grid. Test (TST) cases are hidden by default; pass case_class=TST to view them."""
+    statement = select(CaseEntry)
+    if not case_class or case_class == "ALL":
+        statement = statement.where(func.upper(func.trim(func.coalesce(CaseEntry.case_class, ""))) != "TST")
+    else:
+        statement = statement.where(CaseEntry.case_class == case_class)
+    cases = session.exec(statement).all()
     return [
         {
             "id": c.id,

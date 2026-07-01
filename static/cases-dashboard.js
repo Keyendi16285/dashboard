@@ -22,8 +22,8 @@ async function loadCasesDashboard() {
 
             return `
             <tr class="hover:bg-gray-50/80 transition-colors">
-                <td class="p-4 align-middle overflow-hidden text-ellipsis whitespace-nowrap">
-                    <span class="font-extrabold text-black text-sm block mb-0.5 tracking-tight">${c.case_name || 'Unnamed Case'}</span>
+                <td class="p-4 align-middle">
+                    <span class="case-name text-[15px] leading-snug text-slate-900 block mb-0.5 break-words">${c.case_name || 'Unnamed Case'}</span>
                     <span class="block text-xs text-gray-400 font-mono">System Case ID: ${c.id}</span>
                 </td>
                 

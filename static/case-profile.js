@@ -31,21 +31,39 @@
             metaSubheader.innerText = `Database Registry Key ID: ${caseRecord.id} | Case Indexed Number: ${caseRecord.case_number}`;
         }
 
-        // Build URL parameters for external cross-domain link routing
-        const urlSafeCaseName = encodeURIComponent(caseRecord.case_name);
+        // Build URL parameters for external cross-domain link routing.
+        //
+        // Case Tracker supports an EXACT single-case lookup by primary key via
+        // ?case_id= (WHERE id == case_id), so we use the case id there for a
+        // pinpoint redirect. The case id is the shared case-entries primary key,
+        // consistent across every app on the case_management database.
+        //
+        // Returnalyzer and Papers only do a TEXT search (name/number, and for
+        // Papers the defendant/case number) — they have no id-based filter — so we
+        // pass the unique case NUMBER, the most precise key they support. Papers in
+        // particular stores the case number in its case_name field, so a case-name
+        // search would not match there. Fall back to the case name only when the
+        // number is missing.
+        const caseId = caseRecord.id;
+        const textSearch = (caseRecord.case_number && caseRecord.case_number !== "None")
+            ? caseRecord.case_number
+            : caseRecord.case_name;
+        const urlSafeSearch = encodeURIComponent(textSearch);
 
         const linkCaseTracker = document.getElementById('link-casetracker');
         const linkReturnalyzer = document.getElementById('link-returnalyzer');
         const linkPapers = document.getElementById('link-papers');
 
         if (linkCaseTracker) {
-            linkCaseTracker.href = `https://casetracker.massfoia.com/cases?search=${urlSafeCaseName}&token=${token}`;
+            // Case Tracker's case list is served at "/" (there is no "/cases" page).
+            // ?case_id= gives an exact one-case filter.
+            linkCaseTracker.href = `https://casetracker.massfoia.com/?case_id=${caseId}&token=${token}`;
         }
         if (linkReturnalyzer) {
-            linkReturnalyzer.href = `https://returnalyzer.massfoia.com/cases?search=${urlSafeCaseName}&token=${token}`;
+            linkReturnalyzer.href = `https://returnalyzer.massfoia.com/cases?search=${urlSafeSearch}&token=${token}`;
         }
         if (linkPapers) {
-            linkPapers.href = `https://papers.massfoia.com/?search=${urlSafeCaseName}&token=${token}`;
+            linkPapers.href = `https://papers.massfoia.com/?search=${urlSafeSearch}&token=${token}`;
         }
 
     } catch (error) {

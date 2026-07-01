@@ -44,7 +44,6 @@
         // particular stores the case number in its case_name field, so a case-name
         // search would not match there. Fall back to the case name only when the
         // number is missing.
-        const caseId = caseRecord.id;
         const textSearch = (caseRecord.case_number && caseRecord.case_number !== "None")
             ? caseRecord.case_number
             : caseRecord.case_name;
@@ -57,7 +56,7 @@
         if (linkCaseTracker) {
             // Case Tracker's case list is served at "/" (there is no "/cases" page).
             // ?case_id= gives an exact one-case filter.
-            linkCaseTracker.href = `https://casetracker.massfoia.com/?case_id=${caseId}&token=${token}`;
+            linkCaseTracker.href = `https://casetracker.massfoia.com/?case_id=${caseRecord.id}&token=${token}`;
         }
         if (linkReturnalyzer) {
             linkReturnalyzer.href = `https://returnalyzer.massfoia.com/cases?search=${urlSafeSearch}&token=${token}`;

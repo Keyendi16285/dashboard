@@ -55,6 +55,27 @@
             linkReturnalyzer.href = `https://returnalyzer.massfoia.com/defendants?search=${urlSafeName}&token=${token}`;
         }
 
+        // Remaining ecosystem apps — same behavior as the links above: carry the
+        // defendant NAME as the search term plus the SSO token. (Their code isn't
+        // in this workspace; the token still enables SSO if an app ignores search.)
+        const ecosystemLinks = [
+            { id: 'link-complaintinator',       base: 'https://complaintinator.massfoia.com/' },
+            { id: 'link-demandinator',          base: 'https://demandinator.massfoia.com/' },
+            { id: 'link-expensifier',           base: 'https://expensifier.massfoia.com/' },
+            { id: 'link-draftinator',           base: 'https://draftinator.massfoia.com/' },
+            { id: 'link-settlomatic-pre',       base: 'https://settlomatic.massfoia.com/pre' },
+            { id: 'link-settlomatic-post',      base: 'https://settlomatic.massfoia.com/post' },
+            { id: 'link-settlomatic-collect',   base: 'https://settlomatic.massfoia.com/cash' },
+            { id: 'link-settlomatic-received',  base: 'https://settlomatic.massfoia.com/received' },
+        ];
+        ecosystemLinks.forEach(({ id, base }) => {
+            const el = document.getElementById(id);
+            if (el) {
+                const sep = base.includes('?') ? '&' : '?';
+                el.href = `${base}${sep}search=${urlSafeName}&token=${token}`;
+            }
+        });
+
     } catch (error) {
         console.error("Profile Runtime Error:", error);
         if (nameHeader) nameHeader.innerText = "Failed to load profile context records.";

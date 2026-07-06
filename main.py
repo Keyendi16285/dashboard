@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlmodel import Session, select, func
+from sqlalchemy import text
 from typing import List
 import os
 from dotenv import load_dotenv
@@ -36,6 +37,21 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         return username
     except JWTError:
         raise credentials_exception
+
+
+def _is_admin(session, username) -> bool:
+    """TST (test) cases are admin-only. Look up is_admin for the current user
+    in the shared case_management `user` table."""
+    if not username:
+        return False
+    try:
+        row = session.execute(
+            text('SELECT is_admin FROM "user" WHERE username = :u'),
+            {"u": username},
+        ).first()
+        return bool(row[0]) if row else False
+    except Exception:
+        return False
 
 app = FastAPI(title="MassFOIA Defendant Dashboard")
 
@@ -99,11 +115,12 @@ def get_dashboard_defendants(
 
         # 2. Apply Filtering Logic
         # Mirroring Returnalyzer logic to exclude Test cases by default[cite: 3]
-        if not case_class or case_class == "ALL":
-            statement = statement.where(func.upper(func.trim(func.coalesce(CaseEntry.case_class, ""))) != "TST")
-        else:
+        if case_class and case_class != "ALL":
             statement = statement.where(CaseEntry.case_class == case_class)
-        
+        # TST is admin-only: non-admins never see it, even via an explicit filter.
+        if not _is_admin(session, user):
+            statement = statement.where(func.upper(func.trim(func.coalesce(CaseEntry.case_class, ""))) != "TST")
+
         # 3. Execute Query
         results = session.exec(statement).all()
 
@@ -178,12 +195,13 @@ async def serve_single_case_profile(request: Request, case_id: int):
     
 @app.get("/api/cases")
 async def get_all_cases_api(case_class: str = None, session: Session = Depends(get_session), user = Depends(get_current_user)):
-    """Returns active case rows for the registry grid. Test (TST) cases are hidden by default; pass case_class=TST to view them."""
+    """Returns active case rows for the registry grid. Test (TST) cases are visible to admins only; non-admins never see them."""
     statement = select(CaseEntry)
-    if not case_class or case_class == "ALL":
-        statement = statement.where(func.upper(func.trim(func.coalesce(CaseEntry.case_class, ""))) != "TST")
-    else:
+    if case_class and case_class != "ALL":
         statement = statement.where(CaseEntry.case_class == case_class)
+    # TST is admin-only: non-admins never see it, even via an explicit filter.
+    if not _is_admin(session, user):
+        statement = statement.where(func.upper(func.trim(func.coalesce(CaseEntry.case_class, ""))) != "TST")
     cases = session.exec(statement).all()
     return [
         {

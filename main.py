@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 # Import database and model definitions
 from database import get_session, create_db_and_tables
 from models import Defendant, CaseEntry
+from access import load_access, reject_if_archived
 
 load_dotenv()
 
@@ -22,7 +23,7 @@ ALGORITHM = os.getenv("ALGORITHM", "HS256")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")  # Points to Case Tracker login
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
+async def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Depends(get_session)):
     """Validates the Case Tracker-issued JWT attached as a Bearer token."""
     credentials_exception = HTTPException(
         status_code=401,
@@ -34,9 +35,11 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
-        return username
     except JWTError:
         raise credentials_exception
+    # Archived accounts are denied immediately (not just on token expiry).
+    reject_if_archived(session, username)
+    return username
 
 
 def _is_admin(session, username) -> bool:
@@ -117,9 +120,8 @@ def get_dashboard_defendants(
         # Mirroring Returnalyzer logic to exclude Test cases by default[cite: 3]
         if case_class and case_class != "ALL":
             statement = statement.where(CaseEntry.case_class == case_class)
-        # TST is admin-only: non-admins never see it, even via an explicit filter.
-        if not _is_admin(session, user):
-            statement = statement.where(func.upper(func.trim(func.coalesce(CaseEntry.case_class, ""))) != "TST")
+        # Access control: tool gate + TST-admin-only + this account's scope.
+        statement = load_access(session, user).filter_cases(statement)
 
         # 3. Execute Query
         results = session.exec(statement).all()
@@ -199,9 +201,8 @@ async def get_all_cases_api(case_class: str = None, session: Session = Depends(g
     statement = select(CaseEntry)
     if case_class and case_class != "ALL":
         statement = statement.where(CaseEntry.case_class == case_class)
-    # TST is admin-only: non-admins never see it, even via an explicit filter.
-    if not _is_admin(session, user):
-        statement = statement.where(func.upper(func.trim(func.coalesce(CaseEntry.case_class, ""))) != "TST")
+    # Access control: tool gate + TST-admin-only + this account's scope.
+    statement = load_access(session, user).filter_cases(statement)
     cases = session.exec(statement).all()
     return [
         {

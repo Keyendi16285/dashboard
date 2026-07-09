@@ -17,17 +17,25 @@ from sqlmodel import Session
 from sqlalchemy import and_, func, text
 
 from database import engine
-from models import CaseEntry
+from models import CaseEntry, Defendant
 
 TOOL_NAME = "dashboard"
 
 LEVELS = ("read", "edit", "create")
 _RANK = {level: i for i, level in enumerate(LEVELS)}
 
-_SCOPE_COLUMNS = {
+_CASE_TEXT_COLUMNS = {
     "state": CaseEntry.state,
     "county": CaseEntry.county,
     "class": CaseEntry.case_class,
+}
+_CASE_INT_COLUMNS = {
+    "case": CaseEntry.id,
+    "litigation": CaseEntry.litigation_status_id,
+}
+_DEFENDANT_COLUMNS = {
+    "service": Defendant.service_status,
+    "settlement": Defendant.settlement_status,
 }
 
 
@@ -94,25 +102,43 @@ class AccessContext:
         if not self.can_create:
             self._deny("no_create", "You do not have permission to create records.")
 
-    def scope_clause(self):
-        if self.is_admin or self.is_service or not self._scope:
-            return None
+    def _by_dim(self):
         by_dim: dict = {}
         for dim, val in self._scope:
             by_dim.setdefault(dim, []).append(val)
+        return by_dim
+
+    def scope_clause(self):
+        if self.is_admin or self.is_service or not self._scope:
+            return None
         clauses = []
-        for dim, vals in by_dim.items():
-            if dim == "case":
+        for dim, vals in self._by_dim().items():
+            if dim in _CASE_INT_COLUMNS:
                 ids = [int(v) for v in vals if str(v).strip().isdigit()]
                 if ids:
-                    clauses.append(CaseEntry.id.in_(ids))
-                continue
-            col = _SCOPE_COLUMNS.get(dim)
+                    clauses.append(_CASE_INT_COLUMNS[dim].in_(ids))
+            elif dim in _CASE_TEXT_COLUMNS:
+                normed = [str(v).strip().upper() for v in vals]
+                clauses.append(func.upper(func.trim(func.coalesce(_CASE_TEXT_COLUMNS[dim], ""))).in_(normed))
+        return and_(*clauses) if clauses else None
+
+    def defendant_scope_clause(self):
+        if self.is_admin or self.is_service or not self._scope:
+            return None
+        clauses = []
+        for dim, vals in self._by_dim().items():
+            col = _DEFENDANT_COLUMNS.get(dim)
             if col is None:
                 continue
             normed = [str(v).strip().upper() for v in vals]
             clauses.append(func.upper(func.trim(func.coalesce(col, ""))).in_(normed))
         return and_(*clauses) if clauses else None
+
+    def filter_defendants(self, statement):
+        clause = self.defendant_scope_clause()
+        if clause is not None:
+            statement = statement.where(clause)
+        return statement
 
     def filter_cases(self, statement):
         """Apply TST-admin-only + scope to a statement selecting/joining CaseEntry."""

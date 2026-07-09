@@ -120,8 +120,9 @@ def get_dashboard_defendants(
         # Mirroring Returnalyzer logic to exclude Test cases by default[cite: 3]
         if case_class and case_class != "ALL":
             statement = statement.where(CaseEntry.case_class == case_class)
-        # Access control: tool gate + TST-admin-only + this account's scope.
-        statement = load_access(session, user).filter_cases(statement)
+        # Access control: tool gate + TST-admin-only + scope (case + defendant-level).
+        ctx = load_access(session, user)
+        statement = ctx.filter_defendants(ctx.filter_cases(statement))
 
         # 3. Execute Query
         results = session.exec(statement).all()

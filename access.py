@@ -10,10 +10,13 @@ Model: account = one access level (read<edit<create) + tools + scope
 archived accounts denied; service/anonymous callers are unrestricted non-admins.
 """
 from typing import Optional
+from datetime import datetime
 
 from fastapi import HTTPException, status
+from sqlmodel import Session
 from sqlalchemy import and_, func, text
 
+from database import engine
 from models import CaseEntry
 
 TOOL_NAME = "dashboard"
@@ -28,6 +31,21 @@ _SCOPE_COLUMNS = {
 }
 
 
+def _audit(event_type, actor, target=None, reason=None, detail=None):
+    """Best-effort security-audit write to the shared access_audit table."""
+    try:
+        with Session(engine) as s:
+            s.execute(
+                text("INSERT INTO access_audit (timestamp, event_type, actor, tool, target, reason, detail) "
+                     "VALUES (:ts, :e, :a, :t, :tg, :r, :d)"),
+                {"ts": datetime.utcnow(), "e": event_type, "a": actor, "t": TOOL_NAME,
+                 "tg": target, "r": reason, "d": detail},
+            )
+            s.commit()
+    except Exception:
+        pass
+
+
 def reject_if_archived(session, username: Optional[str]) -> None:
     """Deny an archived account even with an otherwise-valid token."""
     if not username:
@@ -40,6 +58,7 @@ def reject_if_archived(session, username: Optional[str]) -> None:
     except Exception:
         return
     if row and bool(row[0]):
+        _audit("ACCESS_DENIED", username, reason="archived")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="This account has been archived.",
@@ -47,9 +66,10 @@ def reject_if_archived(session, username: Optional[str]) -> None:
 
 
 class AccessContext:
-    def __init__(self, is_admin, is_service, level, tools, scope_rows):
+    def __init__(self, is_admin, is_service, level, tools, scope_rows, actor=None):
         self.is_admin = is_admin
         self.is_service = is_service
+        self.actor = actor
         self.level = level if level in _RANK else "read"
         self._tools = set(tools or [])
         self._scope = list(scope_rows or [])
@@ -62,13 +82,17 @@ class AccessContext:
     def can_create(self) -> bool:
         return self.is_admin or self.is_service or _RANK[self.level] >= _RANK["create"]
 
+    def _deny(self, reason, message, detail=None):
+        _audit("ACCESS_DENIED", self.actor, reason=reason, detail=detail)
+        raise HTTPException(status.HTTP_403_FORBIDDEN, message)
+
     def require_edit(self):
         if not self.can_edit:
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "Your access level is read-only.")
+            self._deny("read_only", "Your access level is read-only.")
 
     def require_create(self):
         if not self.can_create:
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "You do not have permission to create records.")
+            self._deny("no_create", "You do not have permission to create records.")
 
     def scope_clause(self):
         if self.is_admin or self.is_service or not self._scope:
@@ -111,20 +135,22 @@ def load_access(session, username: Optional[str]) -> AccessContext:
         {"u": username},
     ).first()
     if row is None:
-        return AccessContext(False, True, "read", [], [])
+        return AccessContext(False, True, "read", [], [], actor=username)
     user_id, is_admin, is_archived, access_level = row[0], bool(row[1]), bool(row[2]), row[3]
     if is_archived:
+        _audit("ACCESS_DENIED", username, reason="archived")
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "This account has been archived.")
     if is_admin:
-        return AccessContext(True, False, access_level or "read", [], [])
+        return AccessContext(True, False, access_level or "read", [], [], actor=username)
 
     tools = [r[0] for r in session.execute(
         text("SELECT tool FROM user_tools WHERE user_id = :id"), {"id": user_id}
     ).all()]
     if tools and TOOL_NAME not in tools:
+        _audit("ACCESS_DENIED", username, reason="tool_gate")
         raise HTTPException(status.HTTP_403_FORBIDDEN, "You do not have access to the Dashboard.")
 
     scope_rows = [(r[0], r[1]) for r in session.execute(
         text("SELECT dimension, value FROM user_scope WHERE user_id = :id"), {"id": user_id}
     ).all()]
-    return AccessContext(False, False, access_level or "read", tools, scope_rows)
+    return AccessContext(False, False, access_level or "read", tools, scope_rows, actor=username)

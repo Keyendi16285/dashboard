@@ -55,21 +55,29 @@ def _audit(event_type, actor, target=None, reason=None, detail=None):
 
 
 def reject_if_archived(session, username: Optional[str]) -> None:
-    """Deny an archived account even with an otherwise-valid token."""
+    """Deny an archived OR inactive account even with an otherwise-valid token."""
     if not username:
         return
     try:
         row = session.execute(
-            text('SELECT is_archived FROM "user" WHERE username = :u'),
+            text('SELECT is_archived, is_active FROM "user" WHERE username = :u'),
             {"u": username},
         ).first()
     except Exception:
         return
-    if row and bool(row[0]):
+    if not row:
+        return
+    if bool(row[0]):
         _audit("ACCESS_DENIED", username, reason="archived")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="This account has been archived.",
+        )
+    if row[1] is not None and not bool(row[1]):
+        _audit("ACCESS_DENIED", username, reason="inactive")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="This account is inactive.",
         )
 
 
@@ -157,7 +165,7 @@ def load_access(session, username: Optional[str]) -> AccessContext:
     if not username:
         return AccessContext(False, True, "read", [], [])
     row = session.execute(
-        text('SELECT id, is_admin, is_archived, access_level FROM "user" WHERE username = :u'),
+        text('SELECT id, is_admin, is_archived, access_level, is_active FROM "user" WHERE username = :u'),
         {"u": username},
     ).first()
     if row is None:
@@ -166,6 +174,9 @@ def load_access(session, username: Optional[str]) -> AccessContext:
     if is_archived:
         _audit("ACCESS_DENIED", username, reason="archived")
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "This account has been archived.")
+    if row[4] is not None and not bool(row[4]):
+        _audit("ACCESS_DENIED", username, reason="inactive")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "This account is inactive.")
     if is_admin:
         return AccessContext(True, False, access_level or "read", [], [], actor=username)
 

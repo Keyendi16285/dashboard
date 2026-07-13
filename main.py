@@ -19,8 +19,23 @@ load_dotenv()
 
 # --- AUTHENTICATION (Shared Case Tracker SSO) ---
 SECRET_KEY = os.getenv("SECRET_KEY")
+SECRET_KEY_PREVIOUS = os.getenv("SECRET_KEY_PREVIOUS")  # optional: accept prior key during rotation
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY is not set — refusing to start without a JWT signing key.")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")  # Points to Case Tracker login
+
+
+def _decode_token(token: str) -> dict:
+    """Decode a JWT, accepting the current or (during rotation) previous key."""
+    for key in (SECRET_KEY, SECRET_KEY_PREVIOUS):
+        if not key:
+            continue
+        try:
+            return jwt.decode(token, key, algorithms=[ALGORITHM])
+        except Exception:
+            continue
+    raise ValueError("Token could not be validated with any configured key")
 
 
 async def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Depends(get_session)):
@@ -31,14 +46,15 @@ async def get_current_user(token: str = Depends(oauth2_scheme), session: Session
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = _decode_token(token)
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
-    except JWTError:
+    except Exception:
         raise credentials_exception
-    # Archived accounts are denied immediately (not just on token expiry).
-    reject_if_archived(session, username)
+    # Archived/inactive accounts and revoked (stale-version) tokens are denied
+    # immediately, not just on token expiry.
+    reject_if_archived(session, username, payload.get("tv", 0))
     return username
 
 

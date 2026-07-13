@@ -54,13 +54,14 @@ def _audit(event_type, actor, target=None, reason=None, detail=None):
         pass
 
 
-def reject_if_archived(session, username: Optional[str]) -> None:
-    """Deny an archived OR inactive account even with an otherwise-valid token."""
+def reject_if_archived(session, username: Optional[str], token_version=None) -> None:
+    """Deny an archived/inactive account, or a token whose version is stale
+    (revoked via 'log out everywhere'), even with an otherwise-valid token."""
     if not username:
         return
     try:
         row = session.execute(
-            text('SELECT is_archived, is_active FROM "user" WHERE username = :u'),
+            text('SELECT is_archived, is_active, token_version FROM "user" WHERE username = :u'),
             {"u": username},
         ).first()
     except Exception:
@@ -78,6 +79,12 @@ def reject_if_archived(session, username: Optional[str]) -> None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="This account is inactive.",
+        )
+    if token_version is not None and int(token_version) != int(row[2] or 0):
+        _audit("ACCESS_DENIED", username, reason="revoked")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session expired. Please sign in again.",
         )
 
 

@@ -87,6 +87,9 @@
             }
         });
 
+        // Case-level activity feed: this case's own changes AND its defendants'.
+        loadActivityFeed(`/api/cases/${caseId}/activity`, { showDefendant: true });
+
     } catch (error) {
         console.error("Case Profile Engine Context Generation Fault:", error);
         if (titleHeader) titleHeader.innerText = "Failed to synchronize profile connection metrics.";

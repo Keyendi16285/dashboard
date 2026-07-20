@@ -30,6 +30,7 @@ async function loadDashboard() {
                 <td class="p-4 align-middle">
                     <span class="font-bold text-black text-base block mb-0.5">${d.name}</span>
                     <span class="block text-xs text-gray-500 font-mono">Database ID: ${d.id}</span>
+                    ${renderActivitySummaryLine(d.last_activity)}
                 </td>
                 
                 <td class="p-4 align-middle text-gray-700 font-medium">

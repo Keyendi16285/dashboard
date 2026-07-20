@@ -48,3 +48,50 @@ class CaseEntry(CaseEntryBase, table=True):
 
     # Allows accessing defendants via case.defendants[cite: 6]
     defendants: List[Defendant] = Relationship(back_populates="case")
+
+
+class LitigationStatus(SQLModel, table=True):
+    """Shared lookup (case_management DB): maps a litigation status id to its
+    human-readable name (e.g. 3 -> "Complaint Filed"). Read-only here; used to
+    turn raw status ids in the activity feed into names."""
+    __tablename__ = "litigation-status"
+    id: int = Field(primary_key=True)
+    status: str
+
+
+class ActivityLog(SQLModel, table=True):
+    """Shared activity feed written by Case Tracker (case_management DB).
+
+    The dashboard READS this table to render case- and defendant-level history;
+    it never writes to it. Schema mirrors case-entry-form's models/activity.py so
+    the shared table is used as-is (no separate/duplicate log table).
+
+    A defendant change is logged with BOTH case_id and defendant_id, so filtering
+    by case_id yields the full case timeline (case + its defendants), while
+    filtering by defendant_id yields just that defendant.
+    """
+    __tablename__ = "activity_logs"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    timestamp: datetime = Field(default_factory=datetime.utcnow, index=True)
+
+    # Who & what
+    entity_type: str            # "CASE" | "DEFENDANT"
+    action: str                 # "CREATE" | "UPDATE" | "DELETE"
+    user_initial: str
+
+    # Entity references
+    case_id: Optional[int] = Field(default=None, index=True)
+    defendant_id: Optional[int] = Field(default=None, index=True)
+
+    # Denormalized display snapshots (avoids joins on read)
+    case_name: Optional[str] = None
+    defendant_name: Optional[str] = None
+
+    # Structured change data (one row per field)
+    field_name: Optional[str] = None
+    old_value: Optional[str] = None
+    new_value: Optional[str] = None
+
+    # Human-readable summary
+    label: Optional[str] = None

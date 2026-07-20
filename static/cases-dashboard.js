@@ -25,6 +25,7 @@ async function loadCasesDashboard() {
                 <td class="p-4 align-middle">
                     <span class="case-name text-[15px] leading-snug text-slate-900 block mb-0.5 break-words">${c.case_name || 'Unnamed Case'}</span>
                     <span class="block text-xs text-gray-400 font-mono">System Case ID: ${c.id}</span>
+                    ${renderActivitySummaryLine(c.last_activity)}
                 </td>
                 
                 <td class="p-4 align-middle text-gray-800 font-mono text-sm overflow-hidden text-ellipsis whitespace-nowrap">

@@ -6,13 +6,13 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlmodel import Session, select, func
 from sqlalchemy import text
-from typing import List
+from typing import List, Optional
 import os
 from dotenv import load_dotenv
 
 # Import database and model definitions
 from database import get_session, create_db_and_tables
-from models import Defendant, CaseEntry
+from models import Defendant, CaseEntry, ActivityLog, LitigationStatus
 from access import load_access, reject_if_archived
 
 load_dotenv()
@@ -143,6 +143,12 @@ def get_dashboard_defendants(
         # 3. Execute Query
         results = session.exec(statement).all()
 
+        # Compact "latest activity" per defendant for the registry rows.
+        status_map = _load_litigation_status_map(session)
+        latest = _latest_activity_map(
+            session, ActivityLog.defendant_id, [d.id for d, _ in results]
+        )
+
         # 4. Format Output for Frontend
         # We map the SQLModel objects to a plain dictionary for the JSON response
         output = []
@@ -152,9 +158,10 @@ def get_dashboard_defendants(
                 "name": def_obj.name,
                 "case_number": case_obj.case_number,
                 "case_name": case_obj.case_name,
-                "case_class": case_obj.case_class
+                "case_class": case_obj.case_class,
+                "last_activity": _activity_summary(latest.get(def_obj.id), status_map)
             })
-        
+
         return output
 
     except Exception as e:
@@ -221,12 +228,18 @@ async def get_all_cases_api(case_class: str = None, session: Session = Depends(g
     # Access control: tool gate + TST-admin-only + this account's scope.
     statement = load_access(session, user).filter_cases(statement)
     cases = session.exec(statement).all()
+
+    # Compact "latest activity" per case (case + its defendants) for registry rows.
+    status_map = _load_litigation_status_map(session)
+    latest = _latest_activity_map(session, ActivityLog.case_id, [c.id for c in cases])
+
     return [
         {
             "id": c.id,
             "case_name": c.case_name,
             "case_number": c.case_number,
-            "defendant_name": getattr(c, "defendant_name", "N/A") # Dynamic safety validation fallback
+            "defendant_name": getattr(c, "defendant_name", "N/A"), # Dynamic safety validation fallback
+            "last_activity": _activity_summary(latest.get(c.id), status_map)
         } for c in cases
     ]
 
@@ -241,3 +254,132 @@ async def get_single_case_data_api(case_id: int, session: Session = Depends(get_
         "case_name": case_record.case_name,
         "case_number": case_record.case_number
     }
+
+# --- ACTIVITY LOGS (read-only view of the shared activity_logs table) ---
+
+def _load_litigation_status_map(session: Session) -> dict:
+    """{ "3": "Complaint Filed", ... } from the shared litigation-status table."""
+    try:
+        rows = session.exec(select(LitigationStatus)).all()
+        return {str(r.id): r.status for r in rows}
+    except Exception as e:
+        print(f"Litigation status map load failed: {e}")
+        return {}
+
+
+def _is_litigation_status_field(field_name: Optional[str]) -> bool:
+    if not field_name:
+        return False
+    return field_name.strip().lower().replace("_", " ") in {"litigation status", "litigation status id"}
+
+
+def _serialize_activity(log: ActivityLog, status_map: dict) -> dict:
+    """Serialize an ActivityLog for the frontend, mapping litigation status ids
+    to their human-readable names (e.g. "3 → 5" becomes
+    "Complaint Filed → Served") and rebuilding the label to match."""
+    old_value, new_value, label = log.old_value, log.new_value, log.label
+
+    if _is_litigation_status_field(log.field_name):
+        if old_value is not None:
+            old_value = status_map.get(str(old_value).strip(), old_value)
+        if new_value is not None:
+            new_value = status_map.get(str(new_value).strip(), new_value)
+        field = log.field_name or "Litigation Status"
+        label = f"{field}: {old_value or 'None'} → {new_value or 'None'}"
+
+    return {
+        "id": log.id,
+        "timestamp": log.timestamp,
+        "entity_type": log.entity_type,
+        "action": log.action,
+        "user_initial": log.user_initial,
+        "case_id": log.case_id,
+        "defendant_id": log.defendant_id,
+        "case_name": log.case_name,
+        "defendant_name": log.defendant_name,
+        "field_name": log.field_name,
+        "old_value": old_value,
+        "new_value": new_value,
+        "label": label,
+    }
+
+
+def _activity_summary(log: Optional[ActivityLog], status_map: dict) -> Optional[dict]:
+    """Compact one-line summary of a single activity row for registry rows."""
+    if log is None:
+        return None
+    full = _serialize_activity(log, status_map)
+    return {
+        "label": full["label"],
+        "action": full["action"],
+        "user_initial": full["user_initial"],
+        "timestamp": full["timestamp"],
+    }
+
+
+def _latest_activity_map(session: Session, column, ids: list) -> dict:
+    """Return {entity_id: newest ActivityLog} for the given id column
+    (ActivityLog.case_id or ActivityLog.defendant_id), in one round trip."""
+    ids = [i for i in ids if i is not None]
+    if not ids:
+        return {}
+
+    # Newest timestamp per entity id.
+    newest = (
+        select(column, func.max(ActivityLog.timestamp).label("ts"))
+        .where(column.in_(ids))
+        .group_by(column)
+        .subquery()
+    )
+    rows = session.exec(
+        select(ActivityLog).join(
+            newest,
+            (column == newest.c[column.key]) & (ActivityLog.timestamp == newest.c.ts),
+        )
+    ).all()
+
+    result: dict = {}
+    for r in rows:
+        key = getattr(r, column.key)
+        prev = result.get(key)
+        # On a timestamp tie, keep the higher id (the later insert).
+        if prev is None or (r.id or 0) > (prev.id or 0):
+            result[key] = r
+    return result
+
+
+@app.get("/api/cases/{case_id}/activity")
+def get_case_activity(
+    case_id: int,
+    limit: int = 200,
+    session: Session = Depends(get_session),
+    user = Depends(get_current_user)
+):
+    """Case-level activity feed: the case's own changes AND all of its
+    defendants' changes (defendant rows are logged with this case_id too),
+    newest first."""
+    logs = session.exec(
+        select(ActivityLog)
+        .where(ActivityLog.case_id == case_id)
+        .order_by(ActivityLog.timestamp.desc())
+        .limit(limit)
+    ).all()
+    status_map = _load_litigation_status_map(session)
+    return [_serialize_activity(log, status_map) for log in logs]
+
+@app.get("/api/defendants/{defendant_id}/activity")
+def get_defendant_activity(
+    defendant_id: int,
+    limit: int = 200,
+    session: Session = Depends(get_session),
+    user = Depends(get_current_user)
+):
+    """Defendant-level activity feed: only this defendant's changes, newest first."""
+    logs = session.exec(
+        select(ActivityLog)
+        .where(ActivityLog.defendant_id == defendant_id)
+        .order_by(ActivityLog.timestamp.desc())
+        .limit(limit)
+    ).all()
+    status_map = _load_litigation_status_map(session)
+    return [_serialize_activity(log, status_map) for log in logs]

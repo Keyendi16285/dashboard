@@ -76,6 +76,9 @@
             }
         });
 
+        // Defendant-level activity feed: only this defendant's changes.
+        loadActivityFeed(`/api/defendants/${defendantId}/activity`);
+
     } catch (error) {
         console.error("Profile Runtime Error:", error);
         if (nameHeader) nameHeader.innerText = "Failed to load profile context records.";

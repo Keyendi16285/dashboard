@@ -23,5 +23,8 @@ services:
 networks:
   shared_network:
     external: true
-    name: casetracker_default # Update this to match your actual network name
-    # name: case-entry-form_default # Update this to match your actual network name
+    # Shared network where postgres_db lives. Name differs per environment, so it
+    # is configurable via SHARED_NETWORK. Default is the PRODUCTION (Hetzner) value
+    # so a plain `docker compose up` on the server works unchanged. Locally, set
+    # SHARED_NETWORK=case-entry-form_default in .env to use the local network.
+    name: ${SHARED_NETWORK:-casetracker_default}
